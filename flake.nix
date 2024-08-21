@@ -80,6 +80,22 @@
 
           pythonImportsCheck = ["uv"];
         };
+
+        lockfile = builtins.fromTOML (builtins.readFile ./uv.lock);
+        packages = builtins.filter (p: p.name != "uv2nix") lockfile.package;
+        tomlToNixPkg = p: let
+          wheel = pkgs.lib.lists.last p.wheels;
+        in
+          pythonPackages.buildPythonPackage {
+            pname = p.name;
+            version = p.version;
+            format = "wheel";
+            src = builtins.fetchurl {
+              url = wheel.url;
+              sha256 = pkgs.lib.strings.removePrefix "sha256:" wheel.hash;
+            };
+          };
+        packageDefinitions = builtins.map (p: tomlToNixPkg p) packages;
       in {
         _module.args.pkgs = import nixpkgs {
           inherit system;
@@ -89,11 +105,13 @@
         devShells.default = pkgs.mkShell {
           name = "devshell";
           venvDir = "./.venv";
-          buildInputs = [
-            pythonPackages.python # python interpreter
-            pythonPackages.venvShellHook # venv hook for creating/activating
-            uv
-          ];
+          buildInputs =
+            [
+              pythonPackages.python # python interpreter
+              pythonPackages.venvShellHook # venv hook for creating/activating
+              uv
+            ]
+            ++ packageDefinitions;
 
           # Run only after creating the virtual environment
           postVenvCreation = ''
