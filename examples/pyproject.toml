@@ -5,7 +5,7 @@ description = "Example project"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "typer"
+    "typer",
 ]
 
 [build-system]

@@ -26,10 +26,24 @@
         config,
         ...
       }: let
-        pythonPackages = pkgs.python39Packages;
-
+        lockfile = builtins.fromTOML (builtins.readFile ./uv.lock);
+        packages = builtins.filter (p: p.name != "uv2nix") lockfile.package;
+        tomlToNixPkg = p: let
+          wheel = pkgs.lib.lists.last p.wheels;
+        in
+          pkgs.python39Packages.buildPythonPackage {
+            pname = p.name;
+            version = p.version;
+            format = "wheel";
+            src = builtins.fetchurl {
+              url = wheel.url;
+              sha256 = pkgs.lib.strings.removePrefix "sha256:" wheel.hash;
+            };
+          };
+        packageDefinitions = builtins.map (p: tomlToNixPkg p) packages;
+      in {
         # remove when uv version is updated to 0.3.0 on upstream
-        uv = pythonPackages.buildPythonApplication rec {
+        packages.uv = pkgs.python39Packages.buildPythonApplication rec {
           pname = "uv";
           version = "0.3.0";
           pyproject = true;
@@ -79,50 +93,6 @@
           '';
 
           pythonImportsCheck = ["uv"];
-        };
-
-        lockfile = builtins.fromTOML (builtins.readFile ./uv.lock);
-        packages = builtins.filter (p: p.name != "uv2nix") lockfile.package;
-        tomlToNixPkg = p: let
-          wheel = pkgs.lib.lists.last p.wheels;
-        in
-          pythonPackages.buildPythonPackage {
-            pname = p.name;
-            version = p.version;
-            format = "wheel";
-            src = builtins.fetchurl {
-              url = wheel.url;
-              sha256 = pkgs.lib.strings.removePrefix "sha256:" wheel.hash;
-            };
-          };
-        packageDefinitions = builtins.map (p: tomlToNixPkg p) packages;
-      in {
-        _module.args.pkgs = import nixpkgs {
-          inherit system;
-          config.allowUnfree = true; # allow unfree packages, i.e. cuda packages
-        };
-
-        devShells.default = pkgs.mkShell {
-          name = "devshell";
-          venvDir = "./.venv";
-          buildInputs =
-            [
-              pythonPackages.python # python interpreter
-              pythonPackages.venvShellHook # venv hook for creating/activating
-              uv
-            ]
-            ++ packageDefinitions;
-
-          # Run only after creating the virtual environment
-          postVenvCreation = ''
-            unset SOURCE_DATE_EPOCH
-          '';
-
-          # Run on each venv activation.
-          postShellHook = ''
-            unset SOURCE_DATE_EPOCH
-            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$NIX_LD_LIBRARY_PATH"
-          '';
         };
       };
     };
