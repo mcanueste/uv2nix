@@ -29,6 +29,8 @@
         ...
       }: let
         pythonPackages = pkgs.python39Packages;
+
+        packages = import ./packages.nix {inherit pkgs;};
       in {
         _module.args.pkgs = import nixpkgs {
           inherit system;
@@ -41,8 +43,8 @@
           buildInputs = [
             pythonPackages.python # python interpreter
             pythonPackages.venvShellHook # venv hook for creating/activating
-              pkgs.uv
-          ];
+            pkgs.uv
+          ] ++ packages;
 
           # Run only after creating the virtual environment
           postVenvCreation = ''
