@@ -41,7 +41,7 @@
           buildInputs = [
             pythonPackages.python # python interpreter
             pythonPackages.venvShellHook # venv hook for creating/activating
-            uv2nix.packages.${system}.uv
+              pkgs.uv
           ];
 
           # Run only after creating the virtual environment
