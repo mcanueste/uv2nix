@@ -2,10 +2,10 @@
 name = "uv2nix"
 version = "0.1.0"
 description = "Example project"
-readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "typer",
+    "numpy"
 ]
 
 [build-system]
